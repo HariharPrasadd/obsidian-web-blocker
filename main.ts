@@ -3,11 +3,88 @@ import { Plugin } from 'obsidian';
 export default class WebViewerUrlChecker extends Plugin {
 	private intervalId: number = 0;
 	private addressValues: Map<string, string> = new Map();
-	private stringsToCheck: string[] = ["youtube", "twitter", "facebook", "reddit"]; // Array of strings to check for
+	private stringsToCheck: string[] = []; // Will be populated from blocklist.txt
+	private blocklistFilePath = 'blocklist.txt';
+	private defaultBlocklist = "youtube\ntwitter\nfacebook\nreddit";
 
 	async onload() {
+		// Create data folder if it doesn't exist
+		await this.ensureDataFolder();
+		
+		// Load blocklist first
+		await this.loadBlocklist();
+		
 		// Start continuous monitoring
 		this.startMonitoring();
+	}
+
+	async ensureDataFolder() {
+		// Make sure the data folder exists
+		const dataFolderExists = await this.app.vault.adapter.exists(this.manifest.dir + '/data');
+		if (!dataFolderExists) {
+			await this.app.vault.adapter.mkdir(this.manifest.dir + '/data');
+		}
+	}
+
+	async loadBlocklist() {
+		const blocklistPath = this.manifest.dir + '/data/' + this.blocklistFilePath;
+		
+		try {
+			// Check if blocklist file exists
+			const blocklistExists = await this.app.vault.adapter.exists(blocklistPath);
+			
+			if (!blocklistExists) {
+				// Create default blocklist file
+				await this.app.vault.adapter.write(blocklistPath, this.defaultBlocklist);
+				console.log("Created default blocklist.txt");
+			}
+			
+			// Read the blocklist file
+			const data = await this.app.vault.adapter.read(blocklistPath);
+			
+			if (data) {
+				// Parse the content of the file
+				this.stringsToCheck = this.parseBlocklist(data);
+				console.log(`Loaded ${this.stringsToCheck.length} keywords from blocklist`);
+			} else {
+				// Fallback to default values
+				this.stringsToCheck = this.parseBlocklist(this.defaultBlocklist);
+				console.log("Could not load blocklist.txt, using default values");
+			}
+		} catch (error) {
+			// If there's an error, use default values
+			this.stringsToCheck = this.parseBlocklist(this.defaultBlocklist);
+			console.log("Error loading blocklist.txt, using default values:", error);
+		}
+	}
+	
+	parseBlocklist(content: string): string[] {
+		const keywords: string[] = [];
+		
+		// Split by newline first
+		const lines = content.split(/\r?\n/);
+		
+		for (const line of lines) {
+			// Skip empty lines
+			if (!line.trim()) continue;
+			
+			// Check if the line has common separators (comma, tab, semicolon)
+			if (line.includes(',') || line.includes('\t') || line.includes(';')) {
+				// Split by common separators
+				const parts = line.split(/[,\t;]+/);
+				
+				for (const part of parts) {
+					const trimmed = part.trim();
+					if (trimmed) keywords.push(trimmed);
+				}
+			} else {
+				// Just add the whole line as a keyword
+				keywords.push(line.trim());
+			}
+		}
+		
+		// Remove duplicates
+		return [...new Set(keywords)];
 	}
 
 	startMonitoring() {
