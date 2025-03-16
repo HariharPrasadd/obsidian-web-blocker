@@ -1,134 +1,98 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { Plugin } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
-}
-
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
-
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class WebViewerAddressMonitor extends Plugin {
+	private intervalId: number = 0;
+	private addressValues: Map<string, string> = new Map();
 
 	async onload() {
-		await this.loadSettings();
+		console.log('Loading WebViewer Address Monitor plugin');
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		// Add a ribbon icon to manually trigger the check
+		this.addRibbonIcon('search', 'Check WebViewer Address Bars', () => {
+			this.checkAllWebViewerAddresses();
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
+		// Register a command to check all address bars
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
+			id: 'check-webviewer-addresses',
+			name: 'Check All WebViewer Address Bars',
 			callback: () => {
-				new SampleModal(this.app).open();
+				this.checkAllWebViewerAddresses();
 			}
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		// Start continuous monitoring
+		this.startMonitoring();
+	}
+
+	startMonitoring() {
+		// Check every 500ms (twice per second)
+		this.intervalId = window.setInterval(() => {
+			this.checkAllWebViewerAddresses();
+		}, 500);
+	}
+
+	checkAllWebViewerAddresses() {
+		// Find all webviewer-address elements
+		const addressElements = document.querySelectorAll('.webviewer-address');
+		
+		if (addressElements.length === 0) {
+			// Don't log anything if not found
+			return;
+		}
+		
+		// Create a set of current element IDs to detect removals
+		const currentIds = new Set<string>();
+		
+		// Iterate through all address bars
+		addressElements.forEach((element, index) => {
+			// Get the input element
+			const inputElement = element.querySelector('input');
+			
+			if (inputElement) {
+				// Create a unique ID for this element based on its position in DOM
+				// This helps track the same element across checks
+				const elemId = this.getElementPath(element);
+				currentIds.add(elemId);
+				
+				const currentValue = inputElement.value;
+				const previousValue = this.addressValues.get(elemId);
+				
+				// Only log if the value has changed or is new
+				if (currentValue && currentValue !== previousValue) {
+					console.log(`WebViewer address bar #${index + 1} content: "${currentValue}"`);
+					this.addressValues.set(elemId, currentValue);
 				}
 			}
 		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		
+		// Clean up tracking for elements that no longer exist
+		for (const elemId of this.addressValues.keys()) {
+			if (!currentIds.has(elemId)) {
+				this.addressValues.delete(elemId);
+			}
+		}
+	}
+	
+	// Helper function to generate a unique path for an element
+	getElementPath(element: Element): string {
+		let path = '';
+		let current = element;
+		
+		while (current && current !== document.body) {
+			const index = Array.from(current.parentElement?.children || []).indexOf(current);
+			path = `${current.tagName}:${index}>${path}`;
+			current = current.parentElement as Element;
+		}
+		
+		return path;
 	}
 
 	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+		// Clear the interval when the plugin is disabled
+		if (this.intervalId) {
+			window.clearInterval(this.intervalId);
+		}
+		console.log('Unloading WebViewer Address Monitor plugin');
 	}
 }
