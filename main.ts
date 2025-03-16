@@ -1,26 +1,11 @@
 import { Plugin } from 'obsidian';
 
-export default class WebViewerAddressMonitor extends Plugin {
+export default class WebViewerUrlChecker extends Plugin {
 	private intervalId: number = 0;
 	private addressValues: Map<string, string> = new Map();
+	private stringToCheck: string = "youtube"; // String to check for in URLs
 
 	async onload() {
-		console.log('Loading WebViewer Address Monitor plugin');
-
-		// Add a ribbon icon to manually trigger the check
-		this.addRibbonIcon('search', 'Check WebViewer Address Bars', () => {
-			this.checkAllWebViewerAddresses();
-		});
-
-		// Register a command to check all address bars
-		this.addCommand({
-			id: 'check-webviewer-addresses',
-			name: 'Check All WebViewer Address Bars',
-			callback: () => {
-				this.checkAllWebViewerAddresses();
-			}
-		});
-
 		// Start continuous monitoring
 		this.startMonitoring();
 	}
@@ -45,23 +30,26 @@ export default class WebViewerAddressMonitor extends Plugin {
 		const currentIds = new Set<string>();
 		
 		// Iterate through all address bars
-		addressElements.forEach((element, index) => {
+		addressElements.forEach((element) => {
 			// Get the input element
 			const inputElement = element.querySelector('input');
 			
 			if (inputElement) {
 				// Create a unique ID for this element based on its position in DOM
-				// This helps track the same element across checks
 				const elemId = this.getElementPath(element);
 				currentIds.add(elemId);
 				
 				const currentValue = inputElement.value;
 				const previousValue = this.addressValues.get(elemId);
 				
-				// Only log if the value has changed or is new
+				// Only check if the value has changed or is new
 				if (currentValue && currentValue !== previousValue) {
-					console.log(`WebViewer address bar #${index + 1} content: "${currentValue}"`);
 					this.addressValues.set(elemId, currentValue);
+					
+					// Check if the URL contains the specified string
+					if (currentValue.toLowerCase().includes(this.stringToCheck.toLowerCase())) {
+						console.log(`URL contains "${this.stringToCheck}": ${currentValue}`);
+					}
 				}
 			}
 		});
@@ -93,6 +81,5 @@ export default class WebViewerAddressMonitor extends Plugin {
 		if (this.intervalId) {
 			window.clearInterval(this.intervalId);
 		}
-		console.log('Unloading WebViewer Address Monitor plugin');
 	}
 }
