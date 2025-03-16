@@ -3,7 +3,7 @@ import { Plugin } from 'obsidian';
 export default class WebViewerUrlChecker extends Plugin {
 	private intervalId: number = 0;
 	private addressValues: Map<string, string> = new Map();
-	private stringToCheck: string = "youtube"; // String to check for in URLs
+	private stringToCheck: string = "eating chicken strips"; // String to check for in URLs
 
 	async onload() {
 		// Start continuous monitoring
@@ -22,7 +22,6 @@ export default class WebViewerUrlChecker extends Plugin {
 		const addressElements = document.querySelectorAll('.webviewer-address');
 		
 		if (addressElements.length === 0) {
-			// Don't log anything if not found
 			return;
 		}
 		
@@ -45,11 +44,7 @@ export default class WebViewerUrlChecker extends Plugin {
 				// Only check if the value has changed or is new
 				if (currentValue && currentValue !== previousValue) {
 					this.addressValues.set(elemId, currentValue);
-					
-					// Check if the URL contains the specified string
-					if (currentValue.toLowerCase().includes(this.stringToCheck.toLowerCase())) {
-						console.log(`URL contains "${this.stringToCheck}": ${currentValue}`);
-					}
+					this.checkUrlForString(currentValue);
 				}
 			}
 		});
@@ -59,6 +54,51 @@ export default class WebViewerUrlChecker extends Plugin {
 			if (!currentIds.has(elemId)) {
 				this.addressValues.delete(elemId);
 			}
+		}
+	}
+	
+	checkUrlForString(url: string) {
+		try {
+			// Check if the URL itself contains the string
+			if (url.toLowerCase().includes(this.stringToCheck.toLowerCase())) {
+				console.log(`URL contains "${this.stringToCheck}": ${url}`);
+				return;
+			}
+			
+			// Parse the URL to extract query parameters
+			const parsedUrl = new URL(url);
+			const searchParams = parsedUrl.searchParams;
+			
+			// Check common search query parameters
+			const queryParams = ['q', 'query', 'search', 'text', 'term', 'p', 'keyword'];
+			
+			for (const param of queryParams) {
+				if (searchParams.has(param)) {
+					const searchQuery = searchParams.get(param) || '';
+					
+					// Decode the search query
+					const decodedQuery = decodeURIComponent(searchQuery)
+						.replace(/\+/g, ' ')  // Replace + with spaces
+						.toLowerCase();
+					
+					if (decodedQuery.includes(this.stringToCheck.toLowerCase())) {
+						console.log(`Search query contains "${this.stringToCheck}": ${decodedQuery}`);
+						return;
+					}
+				}
+			}
+			
+			// Also check all other parameters
+			searchParams.forEach((value, key) => {
+				const decodedValue = decodeURIComponent(value).replace(/\+/g, ' ').toLowerCase();
+				if (decodedValue.includes(this.stringToCheck.toLowerCase())) {
+					console.log(`URL parameter "${key}" contains "${this.stringToCheck}": ${decodedValue}`);
+				}
+			});
+			
+		} catch (error) {
+			// Silently handle invalid URLs
+			// This can happen if the address bar contains an invalid URL format
 		}
 	}
 	
