@@ -3,7 +3,7 @@ import { Plugin } from 'obsidian';
 export default class WebViewerUrlChecker extends Plugin {
 	private intervalId: number = 0;
 	private addressValues: Map<string, string> = new Map();
-	private stringToCheck: string = "eating chicken strips"; // String to check for in URLs
+	private stringsToCheck: string[] = ["youtube", "twitter", "facebook", "reddit"]; // Array of strings to check for
 
 	async onload() {
 		// Start continuous monitoring
@@ -44,7 +44,7 @@ export default class WebViewerUrlChecker extends Plugin {
 				// Only check if the value has changed or is new
 				if (currentValue && currentValue !== previousValue) {
 					this.addressValues.set(elemId, currentValue);
-					this.checkUrlForString(currentValue);
+					this.checkUrlForStrings(currentValue);
 				}
 			}
 		});
@@ -57,12 +57,14 @@ export default class WebViewerUrlChecker extends Plugin {
 		}
 	}
 	
-	checkUrlForString(url: string) {
+	checkUrlForStrings(url: string) {
 		try {
-			// Check if the URL itself contains the string
-			if (url.toLowerCase().includes(this.stringToCheck.toLowerCase())) {
-				console.log(`URL contains "${this.stringToCheck}": ${url}`);
-				return;
+			// Check if the URL itself contains any of the strings
+			for (const stringToCheck of this.stringsToCheck) {
+				if (url.toLowerCase().includes(stringToCheck.toLowerCase())) {
+					console.log(`URL contains "${stringToCheck}": ${url}`);
+					// We don't return here as the URL might contain multiple strings of interest
+				}
 			}
 			
 			// Parse the URL to extract query parameters
@@ -81,9 +83,11 @@ export default class WebViewerUrlChecker extends Plugin {
 						.replace(/\+/g, ' ')  // Replace + with spaces
 						.toLowerCase();
 					
-					if (decodedQuery.includes(this.stringToCheck.toLowerCase())) {
-						console.log(`Search query contains "${this.stringToCheck}": ${decodedQuery}`);
-						return;
+					// Check each string against the decoded query
+					for (const stringToCheck of this.stringsToCheck) {
+						if (decodedQuery.includes(stringToCheck.toLowerCase())) {
+							console.log(`Search query contains "${stringToCheck}": ${decodedQuery}`);
+						}
 					}
 				}
 			}
@@ -91,14 +95,16 @@ export default class WebViewerUrlChecker extends Plugin {
 			// Also check all other parameters
 			searchParams.forEach((value, key) => {
 				const decodedValue = decodeURIComponent(value).replace(/\+/g, ' ').toLowerCase();
-				if (decodedValue.includes(this.stringToCheck.toLowerCase())) {
-					console.log(`URL parameter "${key}" contains "${this.stringToCheck}": ${decodedValue}`);
+				
+				for (const stringToCheck of this.stringsToCheck) {
+					if (decodedValue.includes(stringToCheck.toLowerCase())) {
+						console.log(`URL parameter "${key}" contains "${stringToCheck}": ${decodedValue}`);
+					}
 				}
 			});
 			
 		} catch (error) {
 			// Silently handle invalid URLs
-			// This can happen if the address bar contains an invalid URL format
 		}
 	}
 	
