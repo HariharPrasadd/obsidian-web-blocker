@@ -120,4 +120,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgements
 
-- Inspired by productivity apps like Freedom and Cold Turkey
+- Inspired by productivity apps like 1Focus and Cold Turkey
