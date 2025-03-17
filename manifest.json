@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-web-blocker",
 	"name": "Web Blocker",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Block keywords/websites in the Web Viewer plugin.",
 	"author": "Harihar Prasad",
