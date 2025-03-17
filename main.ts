@@ -507,8 +507,6 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'Web Viewer URL Checker Settings'});
-
         // Create a container for the toggle with a data attribute for nuclear mode
         const toggleContainer = new Setting(containerEl)
             .setName('Enable URL Blocking')
@@ -543,8 +541,8 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             toggleContainer.settingEl.style.pointerEvents = 'none';
         }
 
-        containerEl.createEl('h3', {text: 'Blocklist'});
-        
+        new Setting(containerEl).setName('Blocklist').setHeading();
+		
         const description = containerEl.createEl('p', {
             text: 'Add websites or keywords to block. One per line, or separate with commas, tabs, or semicolons.',
             cls: 'setting-item-description'
@@ -606,10 +604,10 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
         });
 
         // Add nuclear mode settings
-        containerEl.createEl('h3', {text: 'Nuclear Mode Settings'});
+        new Setting(containerEl).setName('Nuclear mode').setHeading();
 
         const nuclearToggleContainer = new Setting(containerEl)
-            .setName('Enable Nuclear Mode')
+            .setName('Enable nuclear mode')
             .setDesc('Set daily time periods when blocking cannot be disabled and blocklist cannot be modified.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.nuclearModeEnabled)
@@ -640,8 +638,8 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
         if (this.plugin.settings.nuclearModeEnabled) {
             // Add time pickers for daily schedule
             const startTimeContainer = new Setting(containerEl)
-                .setName('Nuclear Mode Start Time')
-                .setDesc('Daily time when nuclear mode begins')
+                .setName('Nuclear mode start time')
+                .setDesc('Daily time when nuclear mode begins.')
                 .addText(text => {
                     text
                         .setPlaceholder('HH:MM (e.g., 22:00)')
@@ -682,8 +680,8 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             startTimeHelperEl.style.color = 'var(--text-muted)';
                 
             const endTimeContainer = new Setting(containerEl)
-                .setName('Nuclear Mode End Time')
-                .setDesc('Daily time when nuclear mode ends')
+                .setName('Nuclear mode end time')
+                .setDesc('Daily time when nuclear mode ends.')
                 .addText(text => {
                     text
                         .setPlaceholder('HH:MM (e.g., 05:00)')
@@ -727,8 +725,8 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             if (!this.plugin.settings.nuclearActive) {
                 // Add activate button
                 new Setting(containerEl)
-                    .setName('Activate Nuclear Schedule')
-                    .setDesc('Activate the daily nuclear mode schedule')
+                    .setName('Activate nuclear schedule')
+                    .setDesc('Activate the daily nuclear mode schedule.')
                     .addButton(button => button
                         .setButtonText('Activate Schedule')
                         .setCta()

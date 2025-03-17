@@ -3,7 +3,7 @@
 	"name": "Web Blocker",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Block distracting websites in the Web Viewer plugin with customizable blocklists and a scheduled nuclear mode.",
+	"description": "Block keywords/websites in the Web Viewer plugin.",
 	"author": "Harihar Prasad",
 	"authorUrl": "https://www.hariharprasad.com/",
 	"isDesktopOnly": false
