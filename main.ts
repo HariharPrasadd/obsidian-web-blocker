@@ -1,23 +1,33 @@
-import { App, PluginSettingTab, Setting, Plugin, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Plugin, Notice, Modal } from 'obsidian';
 
 // Define the plugin settings interface
 interface WebViewerUrlCheckerSettings {
     isEnabled: boolean;
     blocklistContent: string;
+    nuclearModeEnabled: boolean;
+    nuclearStartTime: string; // 24-hour format: "HH:MM"
+    nuclearEndTime: string;   // 24-hour format: "HH:MM"
+    nuclearActive: boolean;   // Flag to track if nuclear mode is currently active
 }
 
 // Default settings
 const DEFAULT_SETTINGS: WebViewerUrlCheckerSettings = {
     isEnabled: true,
-    blocklistContent: "youtube\ntwitter\nfacebook\nreddit"
+    blocklistContent: "youtube\ntwitter\nfacebook\nreddit",
+    nuclearModeEnabled: false,
+    nuclearStartTime: "22:00",
+    nuclearEndTime: "05:00",
+    nuclearActive: false
 }
 
 export default class WebViewerUrlChecker extends Plugin {
     settings: WebViewerUrlCheckerSettings;
     private intervalId: number = 0;
+    private nuclearTimerId: number = 0;
     private addressValues: Map<string, string> = new Map();
     private stringsToCheck: string[] = [];
     private blocklistFilePath = 'blocklist.txt';
+    private originalBlocklist: string = "";
 
     async onload() {
         // Load settings
@@ -35,6 +45,15 @@ export default class WebViewerUrlChecker extends Plugin {
         // Start monitoring if enabled
         if (this.settings.isEnabled) {
             this.startMonitoring();
+        }
+        
+        // Check if nuclear mode should be active
+        if (this.settings.nuclearModeEnabled) {
+            this.settings.nuclearActive = this.checkNuclearStatus();
+            if (this.settings.nuclearActive) {
+                this.enforceNuclearMode();
+            }
+            this.startNuclearTimer();
         }
     }
 
@@ -83,6 +102,36 @@ export default class WebViewerUrlChecker extends Plugin {
     
     // Update blocklist file from settings
     async saveBlocklist() {
+        // If nuclear mode is active, ensure we're not removing any entries
+        if (this.settings.nuclearActive) {
+            // Get the original blocklist entries (from when nuclear mode started)
+            const originalEntries = this.parseBlocklist(this.originalBlocklist);
+            
+            // Get the current entered blocklist content
+            const currentEntries = this.parseBlocklist(this.settings.blocklistContent);
+            
+            // Check if all original entries are still present
+            const missingEntries = originalEntries.filter(entry => 
+                !currentEntries.includes(entry));
+                
+            if (missingEntries.length > 0) {
+                // Some original entries were removed, which isn't allowed
+                new Notice('Removing entries is not allowed during nuclear mode. Your additions have been preserved.');
+                
+                // Create a new blocklist with all original entries AND any new entries
+                const allEntries = [...new Set([...originalEntries, ...currentEntries])];
+                
+                // Update the blocklist content
+                this.settings.blocklistContent = allEntries.join('\n');
+                
+                // Update the text area in the UI if it exists
+                const textArea = document.querySelector('.blocklist-editor') as HTMLTextAreaElement;
+                if (textArea) {
+                    textArea.value = this.settings.blocklistContent;
+                }
+            }
+        }
+        
         const blocklistPath = this.manifest.dir + '/data/' + this.blocklistFilePath;
         
         try {
@@ -265,9 +314,153 @@ export default class WebViewerUrlChecker extends Plugin {
         return path;
     }
 
+    // NUCLEAR MODE FUNCTIONS
+    
+    // Check if nuclear mode should be active based on current time
+    private checkNuclearStatus(): boolean {
+        if (!this.settings.nuclearModeEnabled) return false;
+        
+        // Parse the start and end times
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        // Parse the stored times (format: "HH:MM")
+        const [startHour, startMinute] = this.settings.nuclearStartTime.split(':').map(Number);
+        const [endHour, endMinute] = this.settings.nuclearEndTime.split(':').map(Number);
+        
+        // Calculate current time in minutes for easier comparison
+        const currentTimeInMinutes = currentHour * 60 + currentMinute;
+        const startTimeInMinutes = startHour * 60 + startMinute;
+        const endTimeInMinutes = endHour * 60 + endMinute;
+        
+        // Handle cases where the time spans across midnight
+        if (startTimeInMinutes < endTimeInMinutes) {
+            // Normal case: Start time is before end time in the same day
+            return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes;
+        } else {
+            // Across midnight case: End time is on the next day
+            return currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes;
+        }
+    }
+    
+    // Start timer to check nuclear status
+    private startNuclearTimer() {
+        // Clear existing timer if any
+        if (this.nuclearTimerId) {
+            window.clearInterval(this.nuclearTimerId);
+        }
+        
+        // Check every minute
+        this.nuclearTimerId = window.setInterval(() => {
+            const wasActive = this.settings.nuclearActive;
+            this.settings.nuclearActive = this.checkNuclearStatus();
+            
+            // If status changed
+            if (wasActive !== this.settings.nuclearActive) {
+                if (this.settings.nuclearActive) {
+                    // Nuclear mode just activated
+                    this.enforceNuclearMode();
+                } else {
+                    // Nuclear mode just deactivated
+                    this.releaseNuclearMode();
+                }
+                this.saveSettings();
+            }
+        }, 60000); // Check every minute
+    }
+    
+    // Enforce nuclear mode restrictions
+    private enforceNuclearMode() {
+        // Store the original blocklist for later comparison
+        this.originalBlocklist = this.settings.blocklistContent;
+        
+        // Force enable blocking if it was disabled
+        if (!this.settings.isEnabled) {
+            this.settings.isEnabled = true;
+            this.startMonitoring();
+        }
+        
+        // Show notification
+        const endTime = this.formatTimeForDisplay(this.settings.nuclearEndTime);
+        new Notice(`Nuclear mode activated! Blocking is enforced until ${endTime}`);
+
+        // Update UI if settings tab is open
+        this.updateSettingsUI();
+    }
+    
+    // Release nuclear mode restrictions
+    private releaseNuclearMode() {
+        // Show notification
+        new Notice('Nuclear mode deactivated. Normal settings restored.');
+        
+        // Update UI if settings tab is open
+        this.updateSettingsUI();
+    }
+    
+    // Update settings UI based on nuclear mode status
+    private updateSettingsUI() {
+        // Find and update UI elements if settings tab is open
+        const blockingToggle = document.querySelector('.setting-item [data-nuclear-blocktoggle]') as HTMLElement;
+        if (blockingToggle) {
+            if (this.settings.nuclearActive) {
+                blockingToggle.style.opacity = '0.5';
+                blockingToggle.style.pointerEvents = 'none';
+            } else {
+                blockingToggle.style.opacity = '';
+                blockingToggle.style.pointerEvents = '';
+            }
+        }
+    }
+    
+    // Helper to validate time format (HH:MM)
+    public isValidTimeFormat(time: string): boolean {
+        // Check if the format is HH:MM
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+        return timeRegex.test(time);
+    }
+    
+    // Helper to format time for display (with AM/PM)
+    public formatTimeForDisplay(time24: string): string {
+        const [hours, minutes] = time24.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const hours12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+        return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+    
+    // Activate nuclear mode schedule
+    public activateNuclearSchedule() {
+        // Validate times
+        if (!this.isValidTimeFormat(this.settings.nuclearStartTime) || 
+            !this.isValidTimeFormat(this.settings.nuclearEndTime)) {
+            new Notice('Please enter valid start and end times in HH:MM format');
+            return;
+        }
+        
+        // Enable nuclear mode
+        this.settings.nuclearModeEnabled = true;
+        
+        // Start the timer
+        this.startNuclearTimer();
+        
+        // Save settings
+        this.saveSettings();
+        
+        // Check if we should immediately enter nuclear mode
+        if (this.checkNuclearStatus()) {
+            this.settings.nuclearActive = true;
+            this.enforceNuclearMode();
+        }
+    }
+
     onunload() {
-        // Clear the interval when the plugin is disabled
+        // Clear the intervals when the plugin is disabled
         this.stopMonitoring();
+        
+        // Clear the nuclear timer
+        if (this.nuclearTimerId) {
+            window.clearInterval(this.nuclearTimerId);
+        }
     }
 }
 
@@ -287,12 +480,20 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
 
         containerEl.createEl('h2', {text: 'Web Viewer URL Checker Settings'});
 
-        new Setting(containerEl)
+        // Create a container for the toggle with a data attribute for nuclear mode
+        const toggleContainer = new Setting(containerEl)
             .setName('Enable URL Blocking')
             .setDesc('When enabled, tabs with blocked content will automatically close.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.isEnabled)
                 .onChange(async (value) => {
+                    // Only allow disabling if nuclear mode is not active
+                    if (!value && this.plugin.settings.nuclearActive) {
+                        new Notice('Cannot disable blocking during nuclear mode');
+                        toggle.setValue(true);
+                        return;
+                    }
+                    
                     this.plugin.settings.isEnabled = value;
                     await this.plugin.saveSettings();
                     
@@ -303,6 +504,15 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
                         this.plugin.stopMonitoring();
                     }
                 }));
+        
+        // Add a data attribute for easier reference
+        toggleContainer.settingEl.setAttribute('data-nuclear-blocktoggle', 'true');
+        
+        // Disable the toggle if nuclear mode is active
+        if (this.plugin.settings.nuclearActive) {
+            toggleContainer.settingEl.style.opacity = '0.5';
+            toggleContainer.settingEl.style.pointerEvents = 'none';
+        }
 
         containerEl.createEl('h3', {text: 'Blocklist'});
         
@@ -361,5 +571,163 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             await this.plugin.saveBlocklist();
             // No notification for auto-save to avoid spamming the user
         });
+
+        // Add nuclear mode settings
+        containerEl.createEl('h3', {text: 'Nuclear Mode Settings'});
+
+        new Setting(containerEl)
+            .setName('Enable Nuclear Mode')
+            .setDesc('Set daily time periods when blocking is enforced and blocklist cannot be modified.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.nuclearModeEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.nuclearModeEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    // Refresh the UI to show/hide time pickers
+                    this.display();
+                }));
+
+        if (this.plugin.settings.nuclearModeEnabled) {
+            // Add time pickers for daily schedule
+            new Setting(containerEl)
+                .setName('Nuclear Mode Start Time')
+                .setDesc('Daily time when nuclear mode begins')
+                .addText(text => {
+                    text
+                        .setPlaceholder('HH:MM (e.g., 22:00)')
+                        .setValue(this.plugin.settings.nuclearStartTime || '')
+                        .onChange(async (value) => {
+                            // Validate time format
+                            if (this.plugin.isValidTimeFormat(value)) {
+                                this.plugin.settings.nuclearStartTime = value;
+                                text.inputEl.style.borderColor = '';
+                                await this.plugin.saveSettings();
+                            } else if (value.trim() !== '') {
+                                text.inputEl.style.borderColor = 'red';
+                            }
+                        });
+                        
+                    // Add a tooltip
+                    text.inputEl.setAttribute('title', 'Enter time in 24-hour format: HH:MM');
+                    text.inputEl.style.width = '100px';
+                    
+                    return text;
+                });
+                
+            // Add helper text
+            const startTimeHelperEl = containerEl.createEl('div', {
+                text: '24-hour format (00:00 - 23:59)',
+                cls: 'setting-item-description'
+            });
+            startTimeHelperEl.style.marginLeft = '24px';
+            startTimeHelperEl.style.marginTop = '-12px';
+            startTimeHelperEl.style.marginBottom = '12px';
+            startTimeHelperEl.style.color = 'var(--text-muted)';
+                
+            new Setting(containerEl)
+                .setName('Nuclear Mode End Time')
+                .setDesc('Daily time when nuclear mode ends')
+                .addText(text => {
+                    text
+                        .setPlaceholder('HH:MM (e.g., 05:00)')
+                        .setValue(this.plugin.settings.nuclearEndTime || '')
+                        .onChange(async (value) => {
+                            // Validate time format
+                            if (this.plugin.isValidTimeFormat(value)) {
+                                this.plugin.settings.nuclearEndTime = value;
+                                text.inputEl.style.borderColor = '';
+                                await this.plugin.saveSettings();
+                            } else if (value.trim() !== '') {
+                                text.inputEl.style.borderColor = 'red';
+                            }
+                        });
+                        
+                    // Add a tooltip
+                    text.inputEl.setAttribute('title', 'Enter time in 24-hour format: HH:MM');
+                    text.inputEl.style.width = '100px';
+                    
+                    return text;
+                });
+
+            // Add helper text
+            const endTimeHelperEl = containerEl.createEl('div', {
+                text: '24-hour format (00:00 - 23:59). Can be earlier than start time to block overnight.',
+                cls: 'setting-item-description'
+            });
+            endTimeHelperEl.style.marginLeft = '24px';
+            endTimeHelperEl.style.marginTop = '-12px';
+            endTimeHelperEl.style.marginBottom = '12px';
+            endTimeHelperEl.style.color = 'var(--text-muted)';
+            
+            // Add activate button
+            new Setting(containerEl)
+                .setName('Activate Nuclear Schedule')
+                .setDesc('Activate the daily nuclear mode schedule')
+                .addButton(button => button
+                    .setButtonText('Activate Schedule')
+                    .setCta()
+                    .onClick(() => {
+                        // Show confirmation dialog
+                        this.showNuclearConfirmation();
+                    }));
+        }
+    }
+    
+    // Show confirmation dialog before activating nuclear mode
+    private showNuclearConfirmation() {
+        if (!this.plugin.isValidTimeFormat(this.plugin.settings.nuclearStartTime) || 
+            !this.plugin.isValidTimeFormat(this.plugin.settings.nuclearEndTime)) {
+            new Notice('Please enter valid start and end times in HH:MM format');
+            return;
+        }
+        
+        // Format times for display
+        const startTime = this.plugin.formatTimeForDisplay(this.plugin.settings.nuclearStartTime);
+        const endTime = this.plugin.formatTimeForDisplay(this.plugin.settings.nuclearEndTime);
+        
+        // Create modal
+        const modal = new Modal(this.app);
+        modal.titleEl.setText('Confirm Nuclear Mode Schedule');
+        
+        const content = modal.contentEl.createDiv();
+        
+        // Determine if schedule spans across midnight
+        const [startHour, startMinute] = this.plugin.settings.nuclearStartTime.split(':').map(Number);
+        const [endHour, endMinute] = this.plugin.settings.nuclearEndTime.split(':').map(Number);
+        const startTimeInMinutes = startHour * 60 + startMinute;
+        const endTimeInMinutes = endHour * 60 + endMinute;
+        
+        let scheduleText = '';
+        if (startTimeInMinutes < endTimeInMinutes) {
+            scheduleText = `Web blocking will be active daily from ${startTime} to ${endTime}`;
+        } else {
+            scheduleText = `Web blocking will be active daily from ${startTime} until ${endTime} the next morning`;
+        }
+        
+        content.createEl('p', {
+            text: `${scheduleText}. During these hours, you won't be able to disable blocking or remove items from the blocklist. Are you sure you want to proceed?`
+        });
+        
+        // Add buttons
+        const buttonContainer = content.createDiv({ cls: 'modal-button-container' });
+        
+        const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+        cancelButton.addEventListener('click', () => {
+            modal.close();
+        });
+        
+        const confirmButton = buttonContainer.createEl('button', { 
+            text: 'Confirm Schedule',
+            cls: 'mod-cta'
+        });
+        confirmButton.addEventListener('click', async () => {
+            // Activate nuclear mode scheduling
+            this.plugin.activateNuclearSchedule();
+            modal.close();
+            new Notice('Nuclear schedule activated');
+        });
+        
+        modal.open();
     }
 }
