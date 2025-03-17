@@ -3,9 +3,8 @@
 	"name": "Web Blocker",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Blocks certain pages.",
-	"author": "Obsidian",
+	"description": "Block distracting websites in the Web Viewer plugin with customizable blocklists and a scheduled nuclear mode.",
+	"author": "Harihar Prasad",
 	"authorUrl": "https://www.hariharprasad.com/",
-	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }

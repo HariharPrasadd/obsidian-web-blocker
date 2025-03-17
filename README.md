@@ -1,4 +1,4 @@
-# Web Viewer URL Checker for Obsidian
+# Web Blocker for Obsidian
 
 A productivity-focused plugin for Obsidian that helps you avoid distracting websites when using the Web Viewer plugin.
 
@@ -75,7 +75,7 @@ The plugin checks:
 
 ## Configuration
 
-The plugin creates a blocklist file at `{vault}/.obsidian/plugins/obsidian-webviewer-url-checker/data/blocklist.txt`.
+The plugin creates a blocklist file at `{vault}/.obsidian/plugins/obsidian-web-blocker/data/blocklist.txt`.
 
 ### Default Settings
 
