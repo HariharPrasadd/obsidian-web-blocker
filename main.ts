@@ -577,7 +577,7 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Enable Nuclear Mode')
-            .setDesc('Set daily time periods when blocking is enforced and blocklist cannot be modified.')
+            .setDesc('Set daily time periods when blocking cannot be disabled and blocklist cannot be modified.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.nuclearModeEnabled)
                 .onChange(async (value) => {
