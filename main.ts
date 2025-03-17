@@ -130,6 +130,10 @@ export default class WebViewerUrlChecker extends Plugin {
                     textArea.value = this.settings.blocklistContent;
                 }
             }
+            
+            // Update the original blocklist to include any new additions
+            // This ensures that newly added terms are also protected from removal
+            this.originalBlocklist = this.settings.blocklistContent;
         }
         
         const blocklistPath = this.manifest.dir + '/data/' + this.blocklistFilePath;
@@ -411,6 +415,30 @@ export default class WebViewerUrlChecker extends Plugin {
                 blockingToggle.style.pointerEvents = '';
             }
         }
+        
+        // Find and update Nuclear mode toggle if settings tab is open
+        const nuclearToggle = document.querySelector('.setting-item [data-nuclear-modetoggle]') as HTMLElement;
+        if (nuclearToggle) {
+            if (this.settings.nuclearActive) {
+                nuclearToggle.style.opacity = '0.5';
+				nuclearToggle.style.pointerEvents = 'none';
+            } else {
+                nuclearToggle.style.opacity = '';
+                nuclearToggle.style.pointerEvents = '';
+            }
+        }
+        
+        // Find and update Nuclear time inputs if settings tab is open
+        const timeInputs = document.querySelectorAll('.setting-item [data-nuclear-timeinput]') as NodeListOf<HTMLElement>;
+        timeInputs.forEach(input => {
+            if (this.settings.nuclearActive) {
+                input.style.opacity = '0.5';
+                input.style.pointerEvents = 'none';
+            } else {
+                input.style.opacity = '';
+                input.style.pointerEvents = '';
+            }
+        });
     }
     
     // Helper to validate time format (HH:MM)
@@ -575,12 +603,19 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
         // Add nuclear mode settings
         containerEl.createEl('h3', {text: 'Nuclear Mode Settings'});
 
-        new Setting(containerEl)
+        const nuclearToggleContainer = new Setting(containerEl)
             .setName('Enable Nuclear Mode')
             .setDesc('Set daily time periods when blocking cannot be disabled and blocklist cannot be modified.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.nuclearModeEnabled)
                 .onChange(async (value) => {
+                    // Don't allow disabling if nuclear mode is active
+                    if (!value && this.plugin.settings.nuclearActive) {
+                        new Notice('Cannot disable nuclear mode while it is active');
+                        toggle.setValue(true);
+                        return;
+                    }
+                    
                     this.plugin.settings.nuclearModeEnabled = value;
                     await this.plugin.saveSettings();
                     
@@ -588,9 +623,18 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
+        // Add attribute for easier selection
+        nuclearToggleContainer.settingEl.setAttribute('data-nuclear-modetoggle', 'true');
+        
+        // Disable the toggle if nuclear mode is active
+        if (this.plugin.settings.nuclearActive) {
+            nuclearToggleContainer.settingEl.style.opacity = '0.5';
+            nuclearToggleContainer.settingEl.style.pointerEvents = 'none';
+        }
+
         if (this.plugin.settings.nuclearModeEnabled) {
             // Add time pickers for daily schedule
-            new Setting(containerEl)
+            const startTimeContainer = new Setting(containerEl)
                 .setName('Nuclear Mode Start Time')
                 .setDesc('Daily time when nuclear mode begins')
                 .addText(text => {
@@ -612,20 +656,27 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
                     text.inputEl.setAttribute('title', 'Enter time in 24-hour format: HH:MM');
                     text.inputEl.style.width = '100px';
                     
+                    // Disable if nuclear mode is active
+                    if (this.plugin.settings.nuclearActive) {
+                        text.inputEl.disabled = true;
+                        text.inputEl.style.opacity = '0.5';
+                    }
+                    
                     return text;
                 });
                 
+            startTimeContainer.settingEl.setAttribute('data-nuclear-timeinput', 'start');
+            
             // Add helper text
             const startTimeHelperEl = containerEl.createEl('div', {
                 text: '24-hour format (00:00 - 23:59)',
                 cls: 'setting-item-description'
             });
-            startTimeHelperEl.style.marginLeft = '24px';
             startTimeHelperEl.style.marginTop = '-12px';
             startTimeHelperEl.style.marginBottom = '12px';
             startTimeHelperEl.style.color = 'var(--text-muted)';
                 
-            new Setting(containerEl)
+            const endTimeContainer = new Setting(containerEl)
                 .setName('Nuclear Mode End Time')
                 .setDesc('Daily time when nuclear mode ends')
                 .addText(text => {
@@ -647,30 +698,40 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
                     text.inputEl.setAttribute('title', 'Enter time in 24-hour format: HH:MM');
                     text.inputEl.style.width = '100px';
                     
+                    // Disable if nuclear mode is active
+                    if (this.plugin.settings.nuclearActive) {
+                        text.inputEl.disabled = true;
+                        text.inputEl.style.opacity = '0.5';
+                    }
+                    
                     return text;
                 });
+                
+            endTimeContainer.settingEl.setAttribute('data-nuclear-timeinput', 'end');
 
             // Add helper text
             const endTimeHelperEl = containerEl.createEl('div', {
                 text: '24-hour format (00:00 - 23:59). Can be earlier than start time to block overnight.',
                 cls: 'setting-item-description'
             });
-            endTimeHelperEl.style.marginLeft = '24px';
             endTimeHelperEl.style.marginTop = '-12px';
             endTimeHelperEl.style.marginBottom = '12px';
             endTimeHelperEl.style.color = 'var(--text-muted)';
             
-            // Add activate button
-            new Setting(containerEl)
-                .setName('Activate Nuclear Schedule')
-                .setDesc('Activate the daily nuclear mode schedule')
-                .addButton(button => button
-                    .setButtonText('Activate Schedule')
-                    .setCta()
-                    .onClick(() => {
-                        // Show confirmation dialog
-                        this.showNuclearConfirmation();
-                    }));
+            // Only show activate button if not currently in nuclear mode
+            if (!this.plugin.settings.nuclearActive) {
+                // Add activate button
+                new Setting(containerEl)
+                    .setName('Activate Nuclear Schedule')
+                    .setDesc('Activate the daily nuclear mode schedule')
+                    .addButton(button => button
+                        .setButtonText('Activate Schedule')
+                        .setCta()
+                        .onClick(() => {
+                            // Show confirmation dialog
+                            this.showNuclearConfirmation();
+                        }));
+            }
         }
     }
     
