@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Plugin } from 'obsidian';
+import { App, PluginSettingTab, Setting, Plugin, Notice } from 'obsidian';
 
 // Define the plugin settings interface
 interface WebViewerUrlCheckerSettings {
@@ -88,8 +88,10 @@ export default class WebViewerUrlChecker extends Plugin {
         try {
             await this.app.vault.adapter.write(blocklistPath, this.settings.blocklistContent);
             this.stringsToCheck = this.parseBlocklist(this.settings.blocklistContent);
+            return true;
         } catch (error) {
             console.error("Failed to save blocklist:", error);
+            return false;
         }
     }
     
@@ -336,10 +338,18 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             cls: 'mod-cta'
         });
         
+        // Add save button event listener
         saveButton.addEventListener('click', async () => {
             this.plugin.settings.blocklistContent = textArea.value;
             await this.plugin.saveSettings();
-            await this.plugin.saveBlocklist();
+            const success = await this.plugin.saveBlocklist();
+            
+            // Show a notification
+            if (success) {
+                new Notice('Blocklist saved successfully');
+            } else {
+                new Notice('Failed to save blocklist', 4000);
+            }
         });
 
         // Add event listener for real-time updates
@@ -347,6 +357,7 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             this.plugin.settings.blocklistContent = textArea.value;
             await this.plugin.saveSettings();
             await this.plugin.saveBlocklist();
+            // No notification for auto-save to avoid spamming the user
         });
     }
 }
