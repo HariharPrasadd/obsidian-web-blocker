@@ -17,7 +17,7 @@ A productivity-focused plugin for Obsidian that helps you avoid distracting webs
 1. Open Obsidian
 2. Go to Settings > Community plugins
 3. Disable Safe mode if it's enabled
-4. Click "Browse" and search for "Web Viewer URL Checker"
+4. Click "Browse" and search for "Web Blocker"
 5. Click Install, then Enable
 
 ### Manual Installation
