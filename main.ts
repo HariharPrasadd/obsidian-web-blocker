@@ -36,7 +36,6 @@ export default class WebViewerUrlChecker extends Plugin {
 			if (!blocklistExists) {
 				// Create default blocklist file
 				await this.app.vault.adapter.write(blocklistPath, this.defaultBlocklist);
-				console.log("Created default blocklist.txt");
 			}
 			
 			// Read the blocklist file
@@ -45,16 +44,13 @@ export default class WebViewerUrlChecker extends Plugin {
 			if (data) {
 				// Parse the content of the file
 				this.stringsToCheck = this.parseBlocklist(data);
-				console.log(`Loaded ${this.stringsToCheck.length} keywords from blocklist`);
 			} else {
 				// Fallback to default values
 				this.stringsToCheck = this.parseBlocklist(this.defaultBlocklist);
-				console.log("Could not load blocklist.txt, using default values");
 			}
 		} catch (error) {
 			// If there's an error, use default values
 			this.stringsToCheck = this.parseBlocklist(this.defaultBlocklist);
-			console.log("Error loading blocklist.txt, using default values:", error);
 		}
 	}
 	
@@ -134,13 +130,20 @@ export default class WebViewerUrlChecker extends Plugin {
 		}
 	}
 	
+	closeTab(){
+	}
+
 	checkUrlForStrings(url: string) {
 		try {
 			// Check if the URL itself contains any of the strings
 			for (const stringToCheck of this.stringsToCheck) {
 				if (url.toLowerCase().includes(stringToCheck.toLowerCase())) {
-					console.log(`URL contains "${stringToCheck}": ${url}`);
-					// We don't return here as the URL might contain multiple strings of interest
+					const leaf = this.app.workspace.getMostRecentLeaf();
+					if (leaf) {
+						const viewType = leaf.view.getViewType();
+						this.app.workspace.detachLeavesOfType(viewType);
+					}
+					return;
 				}
 			}
 			
@@ -163,7 +166,12 @@ export default class WebViewerUrlChecker extends Plugin {
 					// Check each string against the decoded query
 					for (const stringToCheck of this.stringsToCheck) {
 						if (decodedQuery.includes(stringToCheck.toLowerCase())) {
-							console.log(`Search query contains "${stringToCheck}": ${decodedQuery}`);
+							const leaf = this.app.workspace.getMostRecentLeaf();
+							if (leaf) {
+								const viewType = leaf.view.getViewType();
+								this.app.workspace.detachLeavesOfType(viewType);
+								return;
+							}
 						}
 					}
 				}
@@ -175,7 +183,12 @@ export default class WebViewerUrlChecker extends Plugin {
 				
 				for (const stringToCheck of this.stringsToCheck) {
 					if (decodedValue.includes(stringToCheck.toLowerCase())) {
-						console.log(`URL parameter "${key}" contains "${stringToCheck}": ${decodedValue}`);
+						const leaf = this.app.workspace.getMostRecentLeaf();
+						if (leaf) {
+							const viewType = leaf.view.getViewType();
+							this.app.workspace.detachLeavesOfType(viewType);
+							return;
+						}
 					}
 				}
 			});
