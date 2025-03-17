@@ -321,11 +321,13 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             cls: 'blocklist-editor'
         });
         
-        // Style the textarea
+        // Style the textarea - fixed size with scrolling
         textArea.style.width = '100%';
         textArea.style.height = '200px';
         textArea.style.fontFamily = 'monospace';
         textArea.style.marginBottom = '12px';
+        textArea.style.resize = 'none';  // Prevent resizing
+        textArea.style.overflowY = 'auto';  // Enable vertical scrolling
         textArea.value = this.plugin.settings.blocklistContent;
 
         // Add save button
