@@ -1,11 +1,11 @@
 {
 	"id": "obsidian-web-blocker",
-	"name": "Site Blocker",
+	"name": "Web Blocker",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Blocks certain pages.",
 	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"authorUrl": "https://www.hariharprasad.com/",
 	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }

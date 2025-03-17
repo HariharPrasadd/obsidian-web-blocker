@@ -1,94 +1,123 @@
-# Obsidian Sample Plugin
+# Web Viewer URL Checker for Obsidian
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+A productivity-focused plugin for Obsidian that helps you avoid distracting websites when using the Web Viewer plugin.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- 🚫 **URL Blocking**: Automatically closes web viewer tabs containing blocked domains or keywords
+- 📋 **Customizable Blocklist**: Add, remove, or modify websites and keywords to block
+- 🔍 **URL & Search Query Analysis**: Detects blocked content in both URLs and search queries
+- ⏰ **Nuclear Mode**: Schedule enforced blocking periods when you need to focus
+- 🔒 **Commitment Device**: During nuclear mode, you can't disable blocking or remove items from the blocklist
 
-## First time developing plugins?
+## Installation
 
-Quick starting guide for new plugin devs:
+### From Obsidian Community Plugins
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+1. Open Obsidian
+2. Go to Settings > Community plugins
+3. Disable Safe mode if it's enabled
+4. Click "Browse" and search for "Web Viewer URL Checker"
+5. Click Install, then Enable
 
-## Releasing new releases
+### Manual Installation
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+1. Download the latest release from the [github repository](https://github.com/hariharprasadd/obsidian-web-blocker)
+2. Extract the contents to your Obsidian plugins folder: `{vault}/.obsidian/plugins/obsidian-web-blocker/`
+3. Restart Obsidian
+4. Go to Settings > Community plugins and enable "Web Blocker"
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Usage
 
-## Adding your plugin to the community plugin list
+### Basic Configuration
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+1. Go to Settings > Web Blocker
+2. Enable URL Blocking
+3. Edit the blocklist to include websites or keywords you want to block
 
-## How to use
+### Adding to the Blocklist
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+You can add entries to the blocklist in several ways:
+- One entry per line
+- Multiple entries on a single line separated by commas
+- Multiple entries on a single line separated by tabs or semicolons
 
-## Manually installing the plugin
+Example blocklist:
+```
+youtube
+twitter, instagram
+facebook
+reddit
+news
+```
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+### Nuclear Mode
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+Nuclear Mode is a strict focus mode that enforces blocking during specified hours:
 
-## Funding URL
+1. In plugin settings, enable Nuclear Mode
+2. Set your preferred start and end times (24-hour format)
+3. Click "Activate Schedule"
 
-You can include funding URLs where people who use your plugin can financially support it.
+During Nuclear Mode:
+- URL blocking cannot be disabled
+- Items cannot be removed from the blocklist
+- You can still add new items to the blocklist
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+## How it Works
+
+This plugin monitors the Web Viewer plugin's address bar for blocked domains and keywords. When a match is found, it automatically closes the Web Viewer tab.
+
+The plugin checks:
+- The domain and path of the URL
+- Search query parameters in the URL
+- Other URL parameters that might contain blocked terms
+
+## Configuration
+
+The plugin creates a blocklist file at `{vault}/.obsidian/plugins/obsidian-webviewer-url-checker/data/blocklist.txt`.
+
+### Default Settings
 
 ```json
 {
-    "fundingUrl": "https://buymeacoffee.com"
+  "isEnabled": true,
+  "blocklistContent": "youtube\ntwitter\nfacebook\nreddit",
+  "nuclearModeEnabled": false,
+  "nuclearStartTime": "22:00",
+  "nuclearEndTime": "05:00",
+  "nuclearActive": false
 }
 ```
 
-If you have multiple URLs, you can also do:
+## Compatibility
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+This plugin is compatible with Obsidian v0.15.0 and newer, and requires the Web Viewer plugin to be installed.
 
-## API Documentation
+## Development
 
-See https://github.com/obsidianmd/obsidian-api
+This plugin uses TypeScript and the Obsidian API.
+
+### Building
+
+1. Clone this repository
+2. Run `npm install`
+3. Run `npm run build`
+
+### Testing
+
+1. Build the plugin
+2. Copy the `main.js` and `manifest.json` files to your vault's plugin folder
+3. Reload Obsidian
+
+## Support
+
+If you encounter any issues or have suggestions, please [create an issue](https://github.com/hariharprasadd/obsidian-web-blocker/issues).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgements
+
+- Inspired by productivity apps like Freedom and Cold Turkey
