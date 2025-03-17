@@ -421,7 +421,7 @@ export default class WebViewerUrlChecker extends Plugin {
         if (nuclearToggle) {
             if (this.settings.nuclearActive) {
                 nuclearToggle.style.opacity = '0.5';
-				nuclearToggle.style.pointerEvents = 'none';
+                nuclearToggle.style.pointerEvents = 'none';
             } else {
                 nuclearToggle.style.opacity = '';
                 nuclearToggle.style.pointerEvents = '';
@@ -495,6 +495,7 @@ export default class WebViewerUrlChecker extends Plugin {
 // Settings Tab
 class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
     plugin: WebViewerUrlChecker;
+    private _tempBlocklistContent: string = ""; // Temporary storage for blocklist content
 
     constructor(app: App, plugin: WebViewerUrlChecker) {
         super(app, plugin);
@@ -554,6 +555,9 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             cls: 'setting-item'
         });
 
+        // Initialize the temporary blocklist content
+        this._tempBlocklistContent = this.plugin.settings.blocklistContent;
+
         // Add the text area for editing the blocklist
         const textArea = textAreaContainer.createEl('textarea', {
             cls: 'blocklist-editor'
@@ -566,7 +570,7 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
         textArea.style.marginBottom = '12px';
         textArea.style.resize = 'none';  // Prevent resizing
         textArea.style.overflowY = 'auto';  // Enable vertical scrolling
-        textArea.value = this.plugin.settings.blocklistContent;
+        textArea.value = this._tempBlocklistContent;
 
         // Add save button
         const buttonContainer = containerEl.createDiv({
@@ -580,8 +584,11 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
         
         // Add save button event listener
         saveButton.addEventListener('click', async () => {
+            // Update the settings with the textarea content
             this.plugin.settings.blocklistContent = textArea.value;
             await this.plugin.saveSettings();
+            
+            // Save the blocklist to file and update the active blocklist
             const success = await this.plugin.saveBlocklist();
             
             // Show a notification
@@ -592,12 +599,10 @@ class WebViewerUrlCheckerSettingTab extends PluginSettingTab {
             }
         });
 
-        // Add event listener for real-time updates
-        textArea.addEventListener('input', async () => {
-            this.plugin.settings.blocklistContent = textArea.value;
-            await this.plugin.saveSettings();
-            await this.plugin.saveBlocklist();
-            // No notification for auto-save to avoid spamming the user
+        // Add event listener for text changes (but don't save to file)
+        textArea.addEventListener('input', () => {
+            // Just update the temporary content, don't save to settings or file
+            this._tempBlocklistContent = textArea.value;
         });
 
         // Add nuclear mode settings

@@ -1,6 +1,6 @@
 {
 	"id": "obsidian-web-blocker",
-	"name": "Obsidian Web Blocker",
+	"name": "Site Blocker",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Blocks certain pages.",
