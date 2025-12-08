@@ -4,11 +4,11 @@ A productivity-focused plugin for Obsidian that helps you avoid distracting webs
 
 ## Features
 
-- 🚫 **URL Blocking**: Automatically closes web viewer tabs containing blocked domains or keywords
-- 📋 **Customizable Blocklist**: Add, remove, or modify websites and keywords to block
-- 🔍 **URL & Search Query Analysis**: Detects blocked content in both URLs and search queries
-- ⏰ **Nuclear Mode**: Schedule enforced blocking periods when you need to focus
-- 🔒 **Commitment Device**: During nuclear mode, you can't disable blocking or remove items from the blocklist
+- **URL Blocking**: Automatically closes web viewer tabs containing blocked domains or keywords
+- **Customizable Blocklist**: Add, remove, or modify websites and keywords to block
+- **URL & Search Query Analysis**: Detects blocked content in both URLs and search queries
+- **Nuclear Mode**: Schedule enforced blocking periods when you need to focus
+- **Commitment Device**: During nuclear mode, you can't disable blocking or remove items from the blocklist
 
 ## Installation
 
