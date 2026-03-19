@@ -6,5 +6,5 @@
 	"description": "Block keywords/websites in the Web Viewer plugin.",
 	"author": "Harihar Prasad",
 	"authorUrl": "https://www.hariharprasad.com/",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }
